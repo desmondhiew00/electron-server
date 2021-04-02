@@ -1,10 +1,15 @@
-const { app, BrowserWindow } = require('electron');
-const path = require('path');
+/* eslint-disable global-require */
+import '../config/env';
 
-const server = require('./server');
+import { app, BrowserWindow } from 'electron';
+import express from './server/express';
+import { migrate as SequelizeMigrate } from './server/sequelize';
+import * as Models from './server/models';
+
+express();
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require('electron-squirrel-startup')) { // eslint-disable-line global-require
+if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
@@ -14,9 +19,8 @@ const createWindow = () => {
     width: 800,
     height: 600,
   });
-
   // and load the index.html of the app.
-  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
+  mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY); // eslint-disable-line no-undef
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
@@ -25,7 +29,14 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', async () => {
+  createWindow();
+  await SequelizeMigrate();
+  try {
+    Models.Users.create({ name: 'User 001' });
+    // eslint-disable-next-line no-empty
+  } catch (e) {}
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
